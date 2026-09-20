@@ -76,13 +76,13 @@ The jar lands in `common/build/libs/`.
 
 The `nms/` modules compile against **Spigot-mapped** `org.spigotmc:spigot`, which is on no
 public repository. [BuildTools](https://www.spigotmc.org/wiki/buildtools/) must install it
-into your local `~/.m2` first, one run per Minecraft version:
+into the local Maven repository first, one run per Minecraft version:
 
 ```bash
-java -jar BuildTools.jar --rev 1.21.5 --remapped
+java -jar BuildTools.jar --rev <version> --remapped
 ```
 
-Then build against only the versions you run:
+Then build only the modules you need:
 
 ```bash
 ./gradlew :common:shadowJar -Pnms=V1_21_5
@@ -93,19 +93,16 @@ Then build against only the versions you run:
 
 > **Without an NMS module the plugin enables but throws on the first render**, because
 > `NMS.getInstance()` resolves its implementation reflectively by version name. A
-> production jar needs the module matching your server.
+> release jar needs the module matching the target server.
 
-Use the **default** classifier, not `remapped-mojang`: the sources are written against
-Spigot names (`BlockPosition`, `MinecraftKey`), not Mojang ones (`BlockPos`,
-`ResourceLocation`). Paper remaps Spigot-mapped plugins at load, so these run on Paper
-as well as Spigot.
+The modules use BuildTools' **default** artifact, not the `remapped-mojang` classifier:
+the sources are written against Spigot names (`BlockPosition`, `MinecraftKey`), not
+Mojang ones (`BlockPos`, `ResourceLocation`). Paper remaps Spigot-mapped plugins at
+load, so the result runs on Paper as well as Spigot.
 
-If you run BuildTools under WSL it installs into WSL's `~/.m2`, not the Windows one.
-Either build from WSL too, or copy the artifacts across:
-
-```bash
-cp -rn ~/.m2/repository/org/spigotmc /mnt/c/Users/<you>/.m2/repository/org/
-```
+Gradle resolves these from the local Maven repository, so BuildTools and Gradle must
+share one — relevant if they run under different environments or users on the same
+machine.
 
 ### Tests
 
@@ -114,9 +111,11 @@ cp -rn ~/.m2/repository/org/spigotmc /mnt/c/Users/<you>/.m2/repository/org/
 ```
 
 Verifies the trigger patterns still match after `ICPlaceholder` rewrites them to tolerate
-colour codes. That rewrite walks a regex character by character, so a pattern built with
-`Pattern.quote` silently becomes literal text that matches nothing — this check exists
-because exactly that shipped once.
+colour codes between characters. That rewrite walks a regex one character at a time and
+has no notion of `\Q...\E`, so patterns must escape per character rather than using
+`Pattern.quote`, and must carry `(?i)` inline rather than relying on
+`Pattern.CASE_INSENSITIVE` — the rewrite recompiles from the pattern string and drops
+flags. Both failures are silent: the regex still compiles, it just never matches.
 
 ## Project layout
 
