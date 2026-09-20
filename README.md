@@ -1,0 +1,2 @@
+# AwesomeChat-DiscordSRV-Addon
+
