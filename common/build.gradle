@@ -32,8 +32,8 @@ dependencies {
 
     // Opt in with -PwithNms once BuildTools has installed the craftbukkit jars.
     rootProject.nmsVersions.keySet()
-            .findAll { rootProject.findProject(":${it}") != null }
-            .each { implementation project(":${it}") }
+            .findAll { rootProject.findProject(":nms:${it}") != null }
+            .each { implementation project(":nms:${it}") }
 }
 
 // The trigger regexes are the only logic this fork authors, and they are only

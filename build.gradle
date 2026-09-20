@@ -103,10 +103,10 @@ subprojects {
 // The NMS modules compile against Spigot-mapped craftbukkit, which only exists in
 // the local Maven repository after BuildTools has been run for that version.
 nmsVersions.each { name, cbVersion ->
-    if (findProject(":${name}") == null) {
+    if (findProject(":nms:${name}") == null) {
         return
     }
-    project(":${name}") {
+    project(":nms:${name}") {
         dependencies {
             compileOnly project(':abstraction')
             compileOnly "org.spigotmc:spigot:${cbVersion}"

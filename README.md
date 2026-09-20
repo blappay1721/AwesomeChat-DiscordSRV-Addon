@@ -1,6 +1,6 @@
 # AwesomeChat DiscordSRV Addon
 
-Renders [AwesomeChat](https://github.com/blappay1721/AwesomeChat)'s chat displays into
+Renders [AwesomeChat](https://github.com/HackerADF/AwesomeChat)'s chat displays into
 DiscordSRV messages. When a player sends `[item]`, `[inv]` or `[ec]` in game, Discord
 receives a rendered image of the actual item model, inventory or ender chest instead of
 the literal trigger text.
@@ -74,7 +74,7 @@ The jar lands in `common/build/libs/`.
 
 ### NMS modules
 
-`V1_19` … `V26_2` compile against **Spigot-mapped** `org.spigotmc:spigot`, which is on no
+The `nms/` modules compile against **Spigot-mapped** `org.spigotmc:spigot`, which is on no
 public repository. [BuildTools](https://www.spigotmc.org/wiki/buildtools/) must install it
 into your local `~/.m2` first, one run per Minecraft version:
 
@@ -145,13 +145,20 @@ All sources live under `src/main/java/dev/adf/awesomechatdiscord/`, elided below
 │   ├── objectholders/ registry/ utils/ wrappers/ debug/ metrics/ updater/
 │   └── main/                 Standalone model + font renderer tools
 │
-├── V1_19 … V26_2/            One NMS implementation per Minecraft revision
-│   ├── nms/V1_21_5.java          implements NMSAddonWrapper
-│   └── vendor/nms/ICV1_21_5.java implements InteractiveChat's NMSWrapper
+├── nms/                      One module per Minecraft revision
+│   ├── V1_19/ … V26_2/       24 modules, each compiled against its own server jar
+│   │   ├── nms/V1_21_5.java          implements NMSAddonWrapper
+│   │   └── vendor/nms/ICV1_21_5.java implements InteractiveChat's NMSWrapper
+│   └── …
 │
 ├── build.gradle              Shared config, NMS version table, shaded libraries
 └── settings.gradle           Module list; NMS modules are opt-in
 ```
+
+Item data — NBT, data components, map pixels, rarity, skull profiles — lives on server
+internals that are obfuscated differently in every Minecraft release, so there is one
+small module per revision behind a shared interface. Only the module matching the
+running server is ever loaded, resolved reflectively by version name at startup.
 
 ## Differences from upstream
 
