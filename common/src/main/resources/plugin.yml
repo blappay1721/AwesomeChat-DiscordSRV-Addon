@@ -1,0 +1,30 @@
+name: AwesomeChatDiscordAddon
+author: loohp, adf
+version: ${version}
+main: dev.adf.awesomechatdiscord.AwesomeChatDiscordAddon
+api-version: '1.19'
+folia-supported: true
+description: Renders AwesomeChat item, inventory and ender chest displays into DiscordSRV messages.
+depend: [AwesomeChat, DiscordSRV]
+softdepend: [PlaceholderAPI, ItemsAdder, ImageFrame, CraftEngine]
+prefix: AwesomeChatDiscordAddon
+
+commands:
+  awesomechatdiscord:
+    usage: /<command>
+    aliases: [acd, awesomechatdiscordsrv]
+    description: Plugin main command
+
+permissions:
+  awesomechatdiscord.reloadconfig:
+    description: Allows you to reload the config
+    default: op
+  awesomechatdiscord.reloadtexture:
+    description: Allows you to reload the texture
+    default: op
+  awesomechatdiscord.status:
+    description: Allows you view the status of the plugin
+    default: true
+  awesomechatdiscord.update:
+    description: Get updater notifications
+    default: op

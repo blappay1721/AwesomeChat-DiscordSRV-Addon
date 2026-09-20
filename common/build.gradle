@@ -1,0 +1,87 @@
+plugins {
+    id 'com.gradleup.shadow'
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT'
+
+    api project(':abstraction')
+
+    // Shipped inside the plugin jar and relocated below, exactly as InteractiveChat
+    // shaded them. NativeAdventureConverter reaches the server's own Adventure by
+    // reflection, so relocating net.kyori is required, not merely tidy.
+    rootProject.shadedLibs.each { implementation it }
+
+    // Compiled in: these ship inside the plugin jar.
+    implementation 'org.nothings.stb:StbImageJava:2.23.0'
+    implementation 'com.madgag:animated-gif-lib:1.4'
+    implementation 'com.loohp:BlockModelRenderer:1.1.5.0'
+    implementation 'me.lucko:jar-relocator:1.6'
+
+    compileOnly 'com.discordsrv:discordsrv:1.30.5'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'com.google.guava:guava:33.2.1-jre'
+    compileOnly 'com.mojang:authlib:6.0.54'
+    compileOnly 'org.mapdb:mapdb:3.0.8'
+    compileOnly 'com.ibm.icu:icu4j:71.1'
+    compileOnly 'com.loohp:ImageFrame:1.8.7.1'
+    compileOnly 'com.github.LoneDev6:API-ItemsAdder:3.6.3-beta-14'
+    compileOnly 'net.momirealms:craft-engine-core:0.0.67'
+    compileOnly 'net.momirealms:craft-engine-bukkit:0.0.67'
+    implementation 'com.intellij:forms_rt:7.0.3'
+
+    // Opt in with -PwithNms once BuildTools has installed the craftbukkit jars.
+    rootProject.nmsVersions.keySet()
+            .findAll { rootProject.findProject(":${it}") != null }
+            .each { implementation project(":${it}") }
+}
+
+// The trigger regexes are the only logic this fork authors, and they are only
+// meaningful after ICPlaceholder rewrites them, so the check runs against the
+// real classes: ./gradlew checkTriggers
+tasks.named('compileTestJava') {
+    classpath += sourceSets.main.compileClasspath
+}
+
+tasks.register('checkTriggers', JavaExec) {
+    group = 'verification'
+    description = 'Verifies AwesomeChat trigger patterns survive the colour-code rewrite.'
+    classpath = sourceSets.test.output + sourceSets.main.output + sourceSets.main.compileClasspath
+    mainClass = 'dev.adf.awesomechatdiscord.TriggerPatternCheck'
+    jvmArgs '-ea'
+}
+
+check.dependsOn 'checkTriggers'
+
+processResources {
+    def props = [version: project.version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+shadowJar {
+    archiveBaseName.set('AwesomeChatDiscordAddon')
+    archiveClassifier.set('')
+    def libs = 'dev.adf.awesomechatdiscord.libs.'
+    ['net.kyori',
+     'com.loohp.platformscheduler',
+     'com.cryptomorin.xseries',
+     'com.google.gson',
+     'org.apache.commons.text',
+     'org.apache.commons.lang3',
+     'org.apache.commons.io',
+     'org.apache.commons.compress',
+     'org.json.simple',
+     'org.simpleyaml',
+     'org.yaml.snakeyaml',
+     'net.querz',
+     'org.objectweb',
+     'com.loohp.blockmodelrenderer',
+     'com.madgag.gif',
+     'me.lucko.jarrelocator'].each { relocate it, libs + it }
+}
+
+build.dependsOn shadowJar

@@ -1,0 +1,6 @@
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT'
+
+    compileOnly 'com.google.guava:guava:33.2.1-jre'
+    compileOnly 'com.mojang:authlib:6.0.54'
+}

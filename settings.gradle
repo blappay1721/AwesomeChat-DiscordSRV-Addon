@@ -1,0 +1,32 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
+rootProject.name = 'AwesomeChatDiscordAddon'
+
+include 'abstraction'
+include 'common'
+
+// One module per NMS revision, 1.19+ only. AwesomeChat requires Paper 1.19,
+// so everything below that in the upstream addon was dropped.
+// NMS modules need craftbukkit jars that only BuildTools can produce locally, so
+// they are opt-in:
+//   -PwithNms          every version (needs BuildTools run for all of them)
+//   -Pnms=V1_21_5      just the versions your server actually runs
+def allNms = ['V1_19', 'V1_19_3', 'V1_19_4',
+              'V1_20', 'V1_20_2', 'V1_20_3', 'V1_20_5', 'V1_20_6',
+              'V1_21', 'V1_21_1', 'V1_21_2', 'V1_21_3', 'V1_21_4', 'V1_21_5',
+              'V1_21_6', 'V1_21_7', 'V1_21_8', 'V1_21_9', 'V1_21_10', 'V1_21_11',
+              'V26_1', 'V26_1_1', 'V26_1_2', 'V26_2']
+
+if (hasProperty('withNms')) {
+    allNms.each { include it }
+} else if (hasProperty('nms')) {
+    def requestedNms = gradle.startParameter.projectProperties['nms'] ?: ''
+    requestedNms.toString().split(',').collect { it.trim() }.findAll { it }.each { requested ->
+        if (!allNms.contains(requested)) {
+            throw new GradleException("Unknown NMS module '${requested}'. Known: ${allNms.join(', ')}")
+        }
+        include requested
+    }
+}

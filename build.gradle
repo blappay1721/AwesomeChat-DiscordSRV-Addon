@@ -1,0 +1,116 @@
+plugins {
+    id 'java'
+    id 'com.gradleup.shadow' version '8.3.3' apply false
+}
+
+// Spigot version each NMS module compiles against. These jars are on no public
+// repository; BuildTools installs them into ~/.m2 as org.spigotmc:spigot. The
+// default classifier carries Spigot mappings (BlockPosition, MinecraftKey), which
+// is what the NMS sources are written against -- not remapped-mojang.
+ext.nmsVersions = [
+        V1_19   : '1.19.2-R0.1-SNAPSHOT', V1_19_3 : '1.19.3-R0.1-SNAPSHOT',
+        V1_19_4 : '1.19.4-R0.1-SNAPSHOT', V1_20   : '1.20.1-R0.1-SNAPSHOT',
+        V1_20_2 : '1.20.2-R0.1-SNAPSHOT', V1_20_3 : '1.20.4-R0.1-SNAPSHOT',
+        V1_20_5 : '1.20.5-R0.1-SNAPSHOT', V1_20_6 : '1.20.6-R0.1-SNAPSHOT',
+        V1_21   : '1.21-R0.1-SNAPSHOT',   V1_21_1 : '1.21.1-R0.1-SNAPSHOT',
+        V1_21_2 : '1.21.3-R0.1-SNAPSHOT', V1_21_3 : '1.21.3-R0.1-SNAPSHOT',
+        V1_21_4 : '1.21.4-R0.1-SNAPSHOT', V1_21_5 : '1.21.5-R0.1-SNAPSHOT',
+        V1_21_6 : '1.21.6-R0.1-SNAPSHOT', V1_21_7 : '1.21.7-R0.1-SNAPSHOT',
+        V1_21_8 : '1.21.8-R0.1-SNAPSHOT', V1_21_9 : '1.21.9-R0.1-SNAPSHOT',
+        V1_21_10: '1.21.10-R0.1-SNAPSHOT', V1_21_11: '1.21.11-R0.1-SNAPSHOT',
+        V26_1   : '26.1-R0.1-SNAPSHOT',   V26_1_1 : '26.1.1-R0.1-SNAPSHOT',
+        V26_1_2 : '26.1.2-R0.1-SNAPSHOT', V26_2   : '26.2-R0.1-SNAPSHOT',
+]
+
+// Everything InteractiveChat used to shade, which this fork must now ship itself.
+ext.shadedLibs = [
+        'net.kyori:adventure-api:5.2.0',
+        'net.kyori:adventure-nbt:5.2.0',
+        'net.kyori:adventure-text-serializer-gson:5.2.0',
+        'net.kyori:adventure-text-serializer-json:5.2.0',
+        'net.kyori:adventure-text-serializer-legacy:5.2.0',
+        'net.kyori:adventure-text-serializer-plain:5.2.0',
+        'net.kyori:adventure-text-minimessage:5.2.0',
+        'com.google.code.gson:gson:2.11.0',
+        'com.googlecode.json-simple:json-simple:1.1.1',
+        'com.github.Querz:NBT:6.1',
+        'com.github.cryptomorin:XSeries:13.7.1',
+        'org.apache.commons:commons-lang3:3.14.0',
+        'org.apache.commons:commons-text:1.12.0',
+        'org.apache.commons:commons-compress:1.26.2',
+        'commons-io:commons-io:2.16.1',
+        'me.carleslc.Simple-YAML:Simple-Yaml:1.8.4',
+        'com.loohp:PlatformScheduler:1.0.0',
+]
+
+allprojects {
+    group = 'dev.adf'
+    version = '1.0.2'
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+        maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+        maven { url = 'https://oss.sonatype.org/content/groups/public/' }
+        maven { url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
+        maven { url = 'https://repo.codemc.org/repository/maven-public/' }
+        maven {
+            url = 'https://repo.loohpjames.com/repository'
+            content { includeGroup 'com.loohp'; includeGroup 'org.nothings.stb' }
+        }
+        maven { url = 'https://nexus.scarsz.me/content/groups/public/' }
+        maven { url = 'https://repo.dmulloy2.net/repository/public/' }
+        maven { url = 'https://repo.viaversion.com' }
+        maven { url = 'https://repo.momirealms.net/releases' }
+        maven { url = 'https://jitpack.io' }
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'java-library'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    dependencies {
+        // Libraries InteractiveChat shaded. The vendored renderer is written against
+        // them relocated, so common bundles and relocates them (see common/build.gradle);
+        // here they only need to be on the compile classpath.
+        rootProject.shadedLibs.each { compileOnly it }
+
+        // Supplied at runtime: Paper ships fastutil, and the addon's own library
+        // loader downloads mapdb and icu4j into the plugin classloader on first run.
+        compileOnly 'it.unimi.dsi:fastutil:8.5.13'
+        compileOnly 'com.github.MilkBowl:VaultAPI:1.7'
+        compileOnly 'me.clip:placeholderapi:2.11.6'
+        compileOnly 'com.viaversion:viaversion-api:5.12.0'
+        compileOnly 'com.loohp:BlockModelRenderer:1.1.5.0'
+        compileOnly 'com.comphenix.protocol:ProtocolLib:5.3.0'
+        compileOnly 'com.google.guava:guava:33.2.1-jre'
+        compileOnly 'com.mojang:authlib:6.0.54'
+    }
+}
+
+// The NMS modules compile against Spigot-mapped craftbukkit, which only exists in
+// the local Maven repository after BuildTools has been run for that version.
+nmsVersions.each { name, cbVersion ->
+    if (findProject(":${name}") == null) {
+        return
+    }
+    project(":${name}") {
+        dependencies {
+            compileOnly project(':abstraction')
+            compileOnly "org.spigotmc:spigot:${cbVersion}"
+            compileOnly "org.spigotmc:spigot-api:${cbVersion}"
+        }
+    }
+}

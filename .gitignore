@@ -1,3 +1,21 @@
+# Build output
+.gradle/
+build/
+*/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+
+# Reference checkouts. These are upstream clones kept locally to diff against;
+# they carry their own .git and must never be committed here.
 /AwesomeChat/
-/InteractiveChat-DiscordSRV-Addon/
 /InteractiveChat/
+/InteractiveChat-DiscordSRV-Addon/
+
+# Server logs copied in while debugging
+/logs/
