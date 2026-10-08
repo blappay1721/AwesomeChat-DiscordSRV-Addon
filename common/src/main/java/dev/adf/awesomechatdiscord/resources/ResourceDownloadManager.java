@@ -234,6 +234,9 @@ public class ResourceDownloadManager {
 
     public synchronized void downloadExtras(Runnable preparation, BiConsumer<String, byte[]> dataHandler) {
         ensureData();
+        if (data == null) {
+            return;
+        }
         try {
             if (data.containsKey("extras-entries")) {
                 JSONObject extras = (JSONObject) data.get("extras-entries");

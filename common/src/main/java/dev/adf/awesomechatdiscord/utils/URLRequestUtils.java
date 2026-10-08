@@ -22,13 +22,17 @@ package dev.adf.awesomechatdiscord.utils;
 
 import dev.adf.awesomechatdiscord.AwesomeChatDiscordAddon;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class URLRequestUtils {
 
@@ -48,6 +52,15 @@ public class URLRequestUtils {
         connection.addRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
         connection.addRequestProperty("Pragma", "no-cache");
         return connection.getInputStream();
+    }
+
+    // Some GIF sites (e.g. klipy) 403 normal clients but serve OpenGraph tags to Discord's link-preview crawler
+    public static String getTextAsDiscordbot(String link) throws IOException {
+        URLConnection connection = new URL(link).openConnection();
+        connection.addRequestProperty("User-Agent", "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)");
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining("\n"));
+        }
     }
 
     public static <T> T retrieveUntilSuccessful(List<ThrowingSupplier<T>> sources) {

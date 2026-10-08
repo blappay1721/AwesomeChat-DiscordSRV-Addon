@@ -38,6 +38,7 @@ import dev.adf.awesomechatdiscord.graphics.APNGReader;
 import dev.adf.awesomechatdiscord.graphics.GifReader;
 import dev.adf.awesomechatdiscord.modules.DiscordToGameMention;
 import dev.adf.awesomechatdiscord.objectholders.PreviewableImageContainer;
+import dev.adf.awesomechatdiscord.utils.ComponentStringUtils;
 import dev.adf.awesomechatdiscord.utils.ThrowingSupplier;
 import dev.adf.awesomechatdiscord.utils.URLRequestUtils;
 import dev.adf.awesomechatdiscord.wrappers.GraphicsToPacketMapWrapper;
@@ -97,6 +98,7 @@ import java.util.stream.Collectors;
 public class InboundToGameEvents implements Listener {
 
     public static final Pattern TENOR_HTML_PATTERN = Pattern.compile("<link class=\\\"dynamic\\\" rel=\\\"image_src\\\" href=\\\"https://media1\\.tenor\\.com/m/(.*?)/.*?\\\">");
+    public static final Pattern KLIPY_HTML_PATTERN = Pattern.compile("<meta property=\"og:image\" content=\"(https://static\\d*\\.klipy\\.com/[^\"]+\\.gif)\"");
 
     public static final Map<UUID, DiscordAttachmentData> DATA = new ConcurrentHashMap<>();
     public static final Map<Player, GraphicsToPacketMapWrapper> MAP_VIEWERS = new ConcurrentHashMap<>();
@@ -341,6 +343,17 @@ public class InboundToGameEvents implements Listener {
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
+                            } else if (url.startsWith("https://klipy.com/")) {
+                                Matcher matcher2;
+                                try {
+                                    matcher2 = KLIPY_HTML_PATTERN.matcher(URLRequestUtils.getTextAsDiscordbot(url));
+                                } catch (Exception e) {
+                                    continue;
+                                }
+                                if (!matcher2.find()) {
+                                    continue;
+                                }
+                                imageUrl = matcher2.group(1);
                             }
                             long size = HTTPRequestUtils.getContentSize(imageUrl);
                             if (size >= 0 && size <= AwesomeChatDiscordAddon.plugin.discordAttachmentsPreviewLimit) {
@@ -390,6 +403,7 @@ public class InboundToGameEvents implements Listener {
                             }
                         }
                     }
+                    event.setMinecraftMessage(ComponentStringUtils.toDiscordSRVComponent(replaceAttachmentUrls(ComponentStringUtils.toRegularComponent(event.getMinecraftMessage()))));
                 }
             });
             future.get(5000, TimeUnit.MILLISECONDS);
@@ -404,32 +418,36 @@ public class InboundToGameEvents implements Listener {
         Debug.debug("Triggering onChatPacket");
         if (AwesomeChatDiscordAddon.plugin.convertDiscordAttachments) {
             Debug.debug("onChatPacket converting discord attachments");
-            for (Entry<UUID, DiscordAttachmentData> entry : DATA.entrySet()) {
-                DiscordAttachmentData data = entry.getValue();
-                String url = data.getUrl();
-                Component component = event.getComponent();
-
-                String replacement = AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingText.replace("{FileName}", data.getFileName());
-                Component textComponent = LegacyComponentSerializer.legacySection().deserialize(replacement);
-                if (AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingHoverEnabled) {
-                    String hover = AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingHoverText.replace("{FileName}", data.getFileName());
-                    textComponent = textComponent.hoverEvent(HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(hover)));
-                }
-                if (AwesomeChatDiscordAddon.plugin.discordAttachmentsImagesUseMaps && data.isImage()) {
-                    textComponent = textComponent.clickEvent(ClickEvent.runCommand("/awesomechatdiscord imagemap " + data.getUniqueId().toString()));
-                    Component imageAppend = LegacyComponentSerializer.legacySection().deserialize(AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingImageAppend.replace("{FileName}", data.getFileName()));
-                    imageAppend = imageAppend.hoverEvent(HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingImageAppendHover.replace("{FileName}", data.getFileName()))));
-                    imageAppend = imageAppend.clickEvent(ClickEvent.openUrl(url));
-                    textComponent = textComponent.append(imageAppend);
-                } else {
-                    textComponent = textComponent.clickEvent(ClickEvent.openUrl(url));
-                }
-
-                component = ComponentReplacing.replace(component, "\\\\?" + CustomStringUtils.escapeMetaCharacters(url), textComponent);
-
-                event.setComponent(component);
-            }
+            event.setComponent(replaceAttachmentUrls(event.getComponent()));
         }
+    }
+
+    // Upstream did this per chat packet via InteractiveChat's PrePacketComponentProcessEvent,
+    // which nothing fires without InteractiveChat, so the Discord->game path calls it directly.
+    public static Component replaceAttachmentUrls(Component component) {
+        for (Entry<UUID, DiscordAttachmentData> entry : DATA.entrySet()) {
+            DiscordAttachmentData data = entry.getValue();
+            String url = data.getUrl();
+
+            String replacement = AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingText.replace("{FileName}", data.getFileName());
+            Component textComponent = LegacyComponentSerializer.legacySection().deserialize(replacement);
+            if (AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingHoverEnabled) {
+                String hover = AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingHoverText.replace("{FileName}", data.getFileName());
+                textComponent = textComponent.hoverEvent(HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(hover)));
+            }
+            if (AwesomeChatDiscordAddon.plugin.discordAttachmentsImagesUseMaps && data.isImage()) {
+                textComponent = textComponent.clickEvent(ClickEvent.runCommand("/awesomechatdiscord imagemap " + data.getUniqueId().toString()));
+                Component imageAppend = LegacyComponentSerializer.legacySection().deserialize(AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingImageAppend.replace("{FileName}", data.getFileName()));
+                imageAppend = imageAppend.hoverEvent(HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(AwesomeChatDiscordAddon.plugin.discordAttachmentsFormattingImageAppendHover.replace("{FileName}", data.getFileName()))));
+                imageAppend = imageAppend.clickEvent(ClickEvent.openUrl(url));
+                textComponent = textComponent.append(imageAppend);
+            } else {
+                textComponent = textComponent.clickEvent(ClickEvent.openUrl(url));
+            }
+
+            component = ComponentReplacing.replace(component, "\\\\?" + CustomStringUtils.escapeMetaCharacters(url), textComponent);
+        }
+        return component;
     }
 
     @SuppressWarnings("deprecation")
