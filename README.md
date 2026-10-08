@@ -34,13 +34,19 @@ the literal trigger text.
 - Death and advancement messages rendered with icons
 
 **Discord → Game**
-- Images and GIFs posted in Discord become viewable in chat
+- Images and GIFs posted in Discord become a clickable label in chat that opens them on
+  an in-game map. Attachments, stickers, direct image links, and Tenor and Klipy GIF
+  links are supported
 - Discord mentions translated into readable names
 
 **Discord slash commands**
 
 `/item`, `/inv`, `/ender`, and the `asuser` variants (`/itemasuser`, `/invasuser`,
 `/enderasuser`), plus `/playerinfo`, `/playerlist` and `/resourcepack`.
+
+> **Image previews fetch every link posted in Discord** to find out whether it is an
+> image. To limit this to sites you trust, set `DiscordAttachments.RestrictImageUrl.Enabled`
+> to `true` in this plugin's `config.yml` and list the allowed URL prefixes.
 
 ## Configuration
 
@@ -66,111 +72,23 @@ Permissions reuse AwesomeChat's nodes: `awesomechat.display.item`,
 
 ## Building
 
-```bash
-./gradlew :common:shadowJar
-```
-
-The jar lands in `common/build/libs/`.
-
-### NMS modules
-
-The `nms/` modules compile against **Spigot-mapped** `org.spigotmc:spigot`, which is on no
-public repository. [BuildTools](https://www.spigotmc.org/wiki/buildtools/) must install it
-into the local Maven repository first, one run per Minecraft version:
+Building needs the Spigot server jar for each Minecraft version you target, installed
+locally with [BuildTools](https://www.spigotmc.org/wiki/buildtools/):
 
 ```bash
-java -jar BuildTools.jar --rev <version> --remapped
-```
-
-Then build only the modules you need:
-
-```bash
+java -jar BuildTools.jar --rev 1.21.5 --remapped
 ./gradlew :common:shadowJar -Pnms=V1_21_5
 ```
 
-`-Pnms` takes a comma-separated list (`-Pnms=V1_21_4,V1_21_5`); `-PwithNms` includes all
-24, which needs a BuildTools run for every one.
-
-> **Without an NMS module the plugin enables but throws on the first render**, because
-> `NMS.getInstance()` resolves its implementation reflectively by version name. A
-> release jar needs the module matching the target server.
-
-The modules use BuildTools' **default** artifact, not the `remapped-mojang` classifier:
-the sources are written against Spigot names (`BlockPosition`, `MinecraftKey`), not
-Mojang ones (`BlockPos`, `ResourceLocation`). Paper remaps Spigot-mapped plugins at
-load, so the result runs on Paper as well as Spigot.
-
-Gradle resolves these from the local Maven repository, so BuildTools and Gradle must
-share one — relevant if they run under different environments or users on the same
-machine.
-
-### Tests
-
-```bash
-./gradlew checkTriggers
-```
-
-Verifies the trigger patterns still match after `ICPlaceholder` rewrites them to tolerate
-colour codes between characters. That rewrite walks a regex one character at a time and
-has no notion of `\Q...\E`, so patterns must escape per character rather than using
-`Pattern.quote`, and must carry `(?i)` inline rather than relying on
-`Pattern.CASE_INSENSITIVE` — the rewrite recompiles from the pattern string and drops
-flags. Both failures are silent: the regex still compiles, it just never matches.
-
-## Project layout
-
-All sources live under `src/main/java/dev/adf/awesomechatdiscord/`, elided below.
-
-```
-.
-├── abstraction/              Types shared with every NMS module
-│   ├── grahpics/             Base image helpers (upstream's spelling)
-│   ├── nms/                  NMSAddonWrapper — the per-version contract
-│   ├── objectholders/
-│   └── vendor/               Vendored from InteractiveChat (GPL-3.0)
-│       ├── IC.java           Stands in for InteractiveChat's static config
-│       ├── ICApi.java        Stands in for its public API
-│       ├── BungeeMessageSender.java   No-op; this fork is single-server
-│       ├── config/ events/ modules/ objectholders/ registry/ updater/ utils/
-│       └── nms/              InteractiveChat's own NMS contract
-│
-├── common/                   The plugin itself
-│   ├── AwesomeChatDiscordAddon.java   Entry point
-│   ├── AwesomeChatBridge.java         Reads AwesomeChat's trigger config
-│   ├── graphics/             ImageGeneration, ImageUtils, banners, GIF/APNG
-│   ├── listeners/            DiscordSRV events in/out, slash commands
-│   ├── resources/            Resource packs, models, fonts, languages, mods
-│   ├── hooks/                ItemsAdder, ImageFrame, CraftEngine
-│   ├── objectholders/ registry/ utils/ wrappers/ debug/ metrics/ updater/
-│   └── main/                 Standalone model + font renderer tools
-│
-├── nms/                      One module per Minecraft revision
-│   ├── V1_19/ … V26_2/       24 modules, each compiled against its own server jar
-│   │   ├── nms/V1_21_5.java          implements NMSAddonWrapper
-│   │   └── vendor/nms/ICV1_21_5.java implements InteractiveChat's NMSWrapper
-│   └── …
-│
-├── build.gradle              Shared config, NMS version table, shaded libraries
-└── settings.gradle           Module list; NMS modules are opt-in
-```
-
-Item data — NBT, data components, map pixels, rarity, skull profiles — lives on server
-internals that are obfuscated differently in every Minecraft release, so there is one
-small module per revision behind a shared interface. Only the module matching the
-running server is ever loaded, resolved reflectively by version name at startup.
+Use the version your server runs. `-Pnms` takes a comma-separated list, and `-PwithNms`
+builds every supported version. The jar lands in `common/build/libs/`.
 
 ## Differences from upstream
 
-- Minecraft 1.8–1.18 dropped (AwesomeChat requires 1.19+), removing 19 NMS modules
-- VentureChat hook removed — it occupies the same slot as AwesomeChat
-- Proxy/BungeeCord support removed; AwesomeChat is single-server
-- MySQL-PlayerDataBridge, the nickname registry and chat signing removed
-- InteractiveChat's shaded library bundle replaced with direct dependencies
-  (Adventure 5, gson, json-simple, querz-NBT, XSeries, Simple-YAML, commons), shaded
-  and relocated under `dev.adf.awesomechatdiscord.libs`
-
-Asset downloads still use `api.loohpjames.com`, which serves the Minecraft resource data
-the renderer needs. Changing those URLs breaks rendering.
+- Requires Minecraft 1.19+ (AwesomeChat's minimum)
+- Single-server only: no BungeeCord/proxy support
+- VentureChat and MySQL-PlayerDataBridge hooks removed
+- Klipy GIF links get in-game previews
 
 ## Licence
 
