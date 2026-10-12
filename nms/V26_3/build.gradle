@@ -1,0 +1,5 @@
+// Dependencies are declared centrally in the root build.gradle.
+// Spigot 26.x is Java 25 bytecode, so javac 25 is needed to read it; emit Java 21
+// bytecode so the shadow plugin's ASM can still relocate the plugin jar.
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+tasks.withType(JavaCompile).configureEach { options.release = 21 }

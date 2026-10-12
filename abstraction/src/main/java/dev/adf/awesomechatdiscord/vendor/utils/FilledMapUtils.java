@@ -33,7 +33,8 @@ public class FilledMapUtils {
 
     public static boolean isFilledMap(ItemStack itemStack) {
         try {
-            return itemStack != null && itemStack.getItemMeta() != null && itemStack.getItemMeta() instanceof MapMeta;
+            // 26.3: a map item without a map id still carries MapMeta, so check the id too
+            return itemStack != null && itemStack.hasItemMeta() && itemStack.getItemMeta() instanceof MapMeta mapMeta && mapMeta.hasMapId();
         } catch (Exception e) {
             return false;
         }
